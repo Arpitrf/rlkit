@@ -6,6 +6,8 @@ Algorithm-specific networks should go else-where.
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+import math
+import matplotlib.pyplot as plt
 
 from rlkit.policies.base import Policy
 from rlkit.torch import pytorch_util as ptu
@@ -45,7 +47,8 @@ class Mlp(nn.Module):
         self.fcs = []
         self.layer_norms = []
         in_size = input_size
-
+        self.img_encoder = ShallowConv()
+        
         for i, next_size in enumerate(hidden_sizes):
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
@@ -64,7 +67,17 @@ class Mlp(nn.Module):
         self.last_fc.bias.data.uniform_(-init_w, init_w)
 
     def forward(self, input, return_preactivations=False):
-        h = input
+        # print("in Forward!!!")
+
+        # print("input.shape: ", input.shape)
+        batch_size = input.shape[0]
+        # plt.imshow(input[:,:-39].reshape(batch_size,256,256,3)[2].type(torch.int64))
+        # plt.show()
+        # 39 because this is critic and takes obs+action as input, i.e. :32 for the image obs + :7 for the action
+        img_feat = self.img_encoder(input[:,:-49].reshape(batch_size,256,256,3).permute(0,3,1,2))
+        h = torch.cat((img_feat, input[:, -49:]), axis=1)
+        
+        # h = input
         for i, fc in enumerate(self.fcs):
             h = fc(h)
             if self.layer_norm and i < len(self.fcs) - 1:
@@ -121,3 +134,76 @@ class TanhMlpPolicy(MlpPolicy):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, output_activation=torch.tanh, **kwargs)
+
+
+class ConvBase(torch.nn.Module):
+    """
+    Base class for ConvNets.
+    """
+    def __init__(self):
+        super(ConvBase, self).__init__()
+
+    # dirty hack - re-implement to pass the buck onto subclasses from ABC parent
+    # def output_shape(self, input_shape):
+    #     """
+    #     Function to compute output shape from inputs to this module. 
+
+    #     Args:
+    #         input_shape (iterable of int): shape of input. Does not include batch dimension.
+    #             Some modules may not need this argument, if their output does not depend 
+    #             on the size of the input, or if they assume fixed size input.
+
+    #     Returns:
+    #         out_shape ([int]): list of integers corresponding to output shape
+    #     """
+    #     raise NotImplementedError
+
+    def forward(self, inputs):
+        x = self.nets(inputs)
+        # if list(self.output_shape(list(inputs.shape)[1:])) != list(x.shape)[1:]:
+        #     raise ValueError('Size mismatch: expect size %s, but got size %s' % (
+        #         str(self.output_shape(list(inputs.shape)[1:])), str(list(x.shape)[1:]))
+        #     )
+        return x
+
+
+class ShallowConv(ConvBase):
+    """
+    A shallow convolutional encoder from https://rll.berkeley.edu/dsae/dsae.pdf
+    """
+    def __init__(self, input_channel=3, output_channel=1024):
+        super(ShallowConv, self).__init__()
+        self._input_channel = input_channel
+        self._output_channel = output_channel
+        self.nets = nn.Sequential(
+            torch.nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+            torch.nn.Conv2d(64, 32, kernel_size=1, stride=1, padding=0),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+            torch.nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+            torch.nn.Conv2d(32, 16, kernel_size=1, stride=1, padding=0),
+            torch.nn.Flatten(),
+            torch.nn.LazyLinear(1024)
+        )
+
+    # def output_shape(self, input_shape):
+    #     """
+    #     Function to compute output shape from inputs to this module. 
+
+    #     Args:
+    #         input_shape (iterable of int): shape of input. Does not include batch dimension.
+    #             Some modules may not need this argument, if their output does not depend 
+    #             on the size of the input, or if they assume fixed size input.
+
+    #     Returns:
+    #         out_shape ([int]): list of integers corresponding to output shape
+    #     """
+    #     assert(len(input_shape) == 3)
+    #     assert(input_shape[0] == self._input_channel)
+    #     out_h = int(math.floor(input_shape[1] / 2.))
+    #     out_w = int(math.floor(input_shape[2] / 2.))
+    #     return [self._output_channel, out_h, out_w]

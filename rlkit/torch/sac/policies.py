@@ -1,11 +1,12 @@
 import numpy as np
 import torch
 from torch import nn as nn
+import matplotlib.pyplot as plt
 
 from rlkit.policies.base import ExplorationPolicy, Policy
 from rlkit.torch.core import eval_np
 from rlkit.torch.distributions import TanhNormal
-from rlkit.torch.networks import Mlp
+from rlkit.torch.networks import Mlp, ShallowConv
 
 
 LOG_SIG_MAX = 2
@@ -46,10 +47,14 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
             init_w=init_w,
             **kwargs
         )
+        # image encoder
+        self.img_encoder = ShallowConv()
+
         self.log_std = None
         self.std = std
         if std is None:
             last_hidden_size = obs_dim
+            # print("obs_dimmmmmmmm: ", obs_dim)
             if len(hidden_sizes) > 0:
                 last_hidden_size = hidden_sizes[-1]
             self.last_fc_log_std = nn.Linear(last_hidden_size, action_dim)
@@ -78,9 +83,33 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         :param deterministic: If True, do not sample
         :param return_log_prob: If True, return a sample and its log probability
         """
-        h = obs
+        # print("inside policy!!")
+        # print("obs shape: ", obs.shape)
+        # Pass img obs through shallow CNN (256x256x3) -> 1024
+        batch_size = obs.shape[0]
+        # print("obs shapeeeeeeeeeee: ", obs.shape)
+        # plt.imshow(obs[:,:-32].reshape(batch_size,256,256,3)[0].type(torch.int64))
+        # plt.show()
+        # temp = obs[:,:-32]
+        # print("111: ", temp.shape)
+        # temp2 = temp.reshape(batch_size,256,256,3)
+        # print("222: ", temp2.shape)
+        # self.img_encoder = self.img_encoder.cuda()
+        # print("^^^^^^^^^", next(self.img_encoder.parameters()).is_cuda)
+        # obs = obs.cuda()
+        img_feat = self.img_encoder(obs[:,:-42].reshape(batch_size,256,256,3).permute(0,3,1,2))
+        # print("img_feat.shape: ", img_feat.shape)
+        # print("proprio shape: ", obs[:, -32:].shape)
+
+        # Concat the features 1024 + 32
+        h = torch.cat((img_feat, obs[:, -42:]), axis=1)
+
+        # h = obs
+
+        # print("h, self.fcs: ", h.shape, len(self.fcs))
         for i, fc in enumerate(self.fcs):
             h = self.hidden_activation(fc(h))
+            # print("h.shape: ", h.shape)
         mean = self.last_fc(h)
         if self.std is None:
             log_std = self.last_fc_log_std(h)

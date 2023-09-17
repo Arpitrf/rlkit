@@ -36,7 +36,11 @@ class TorchTrainer(Trainer, metaclass=abc.ABCMeta):
 
     def train(self, np_batch):
         self._num_train_steps += 1
+        # batch = np_batch
+        for k in np_batch.keys():
+            np_batch[k] = np_batch[k].numpy()
         batch = np_to_pytorch_batch(np_batch)
+        # print("----", batch['observations'].is_cuda)
         self.train_from_torch(batch)
 
     def get_diagnostics(self):

@@ -13,21 +13,22 @@ class SimpleReplayBuffer(ReplayBuffer):
         observation_dim,
         action_dim,
         env_info_sizes,
+        log_dir=None
     ):
         self._observation_dim = observation_dim
         self._action_dim = action_dim
-        self._max_replay_buffer_size = max_replay_buffer_size
-        self._observations = np.zeros((max_replay_buffer_size, observation_dim))
+        # self._max_replay_buffer_size = max_replay_buffer_size
+        # self._observations = np.zeros((max_replay_buffer_size, observation_dim))
         # It's a bit memory inefficient to save the observations twice,
         # but it makes the code *much* easier since you no longer have to
         # worry about termination conditions.
-        self._next_obs = np.zeros((max_replay_buffer_size, observation_dim))
-        self._actions = np.zeros((max_replay_buffer_size, action_dim))
+        # self._next_obs = np.zeros((max_replay_buffer_size, observation_dim))
+        # self._actions = np.zeros((max_replay_buffer_size, action_dim))
         # Make everything a 2D np array to make it easier for other code to
         # reason about the shape of the data
-        self._rewards = np.zeros((max_replay_buffer_size, 1))
+        # self._rewards = np.zeros((max_replay_buffer_size, 1))
         # self._terminals[i] = a terminal was received at time i
-        self._terminals = np.zeros((max_replay_buffer_size, 1), dtype='uint8')
+        # self._terminals = np.zeros((max_replay_buffer_size, 1), dtype='uint8')
         # Define self._env_infos[key][i] to be the return value of env_info[key]
         # at time i
         self._env_infos = {}
@@ -37,6 +38,9 @@ class SimpleReplayBuffer(ReplayBuffer):
 
         self._top = 0
         self._size = 0
+
+        self.log_dir = log_dir
+        self.hdf5_path = log_dir + '/replay_buffer.hdf5'
 
     def add_sample(self, observation, action, reward, next_observation,
                    terminal, env_info, **kwargs):
@@ -58,19 +62,24 @@ class SimpleReplayBuffer(ReplayBuffer):
         if self._size < self._max_replay_buffer_size:
             self._size += 1
 
-    def random_batch(self, batch_size):
-        indices = np.random.randint(0, self._size, batch_size)
-        batch = dict(
-            observations=self._observations[indices],
-            actions=self._actions[indices],
-            rewards=self._rewards[indices],
-            terminals=self._terminals[indices],
-            next_observations=self._next_obs[indices],
-        )
-        for key in self._env_info_keys:
-            assert key not in batch.keys()
-            batch[key] = self._env_infos[key][indices]
-        return batch
+    # def random_batch(self, batch_size):
+    #     indices = np.random.randint(0, self._size, batch_size)
+    #     print("self._observations[indices],: ", self._observations[indices].shape, type(self._observations[indices][0][0]))
+    #     print("self._actions[indices],: ", self._actions[indices].shape, type(self._actions[indices][0][0]))
+    #     print("self._rewards[indices],: ", self._rewards[indices].shape, type(self._rewards[indices][0][0]))
+    #     print("self._next_obs[indices],: ", self._next_obs[indices].shape, type(self._next_obs[indices][0][0]))
+    #     print("self._terminals[indices],: ", self._terminals[indices].shape, type(self._terminals[indices][0][0]))
+    #     batch = dict(
+    #         observations=self._observations[indices],
+    #         actions=self._actions[indices],
+    #         rewards=self._rewards[indices],
+    #         terminals=self._terminals[indices],
+    #         next_observations=self._next_obs[indices],
+    #     )
+    #     for key in self._env_info_keys:
+    #         assert key not in batch.keys()
+    #         batch[key] = self._env_infos[key][indices]
+    #     return batch
 
     def rebuild_env_info_dict(self, idx):
         return {
