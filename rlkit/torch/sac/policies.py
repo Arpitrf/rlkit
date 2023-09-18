@@ -97,12 +97,12 @@ class TanhGaussianPolicy(Mlp, ExplorationPolicy):
         # self.img_encoder = self.img_encoder.cuda()
         # print("^^^^^^^^^", next(self.img_encoder.parameters()).is_cuda)
         # obs = obs.cuda()
-        img_feat = self.img_encoder(obs[:,:-42].reshape(batch_size,256,256,3).permute(0,3,1,2))
+        img_feat = self.img_encoder(obs[:,:-32].reshape(batch_size,256,256,3).permute(0,3,1,2))
         # print("img_feat.shape: ", img_feat.shape)
         # print("proprio shape: ", obs[:, -32:].shape)
 
         # Concat the features 1024 + 32
-        h = torch.cat((img_feat, obs[:, -42:]), axis=1)
+        h = torch.cat((img_feat, obs[:, -32:]), axis=1)
 
         # h = obs
 

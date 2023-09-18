@@ -74,8 +74,9 @@ class Mlp(nn.Module):
         # plt.imshow(input[:,:-39].reshape(batch_size,256,256,3)[2].type(torch.int64))
         # plt.show()
         # 39 because this is critic and takes obs+action as input, i.e. :32 for the image obs + :7 for the action
-        img_feat = self.img_encoder(input[:,:-49].reshape(batch_size,256,256,3).permute(0,3,1,2))
-        h = torch.cat((img_feat, input[:, -49:]), axis=1)
+        # For position control, instead of 39, should be 36
+        img_feat = self.img_encoder(input[:,:-36].reshape(batch_size,256,256,3).permute(0,3,1,2))
+        h = torch.cat((img_feat, input[:, -36:]), axis=1)
         
         # h = input
         for i, fc in enumerate(self.fcs):

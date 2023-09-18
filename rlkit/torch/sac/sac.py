@@ -93,8 +93,8 @@ class SACTrainer(TorchTrainer):
         """
         Policy and Alpha Loss
         """
-        pytorch_total_params = sum(p.numel() for p in self.policy.parameters())
-        pytorch_total_trainable_params = sum(p.numel() for p in self.policy.parameters() if p.requires_grad)
+        # pytorch_total_params = sum(p.numel() for p in self.policy.parameters())
+        # pytorch_total_trainable_params = sum(p.numel() for p in self.policy.parameters() if p.requires_grad)
         # print("self.policy: ", next(self.policy.parameters()).is_cuda, pytorch_total_params, pytorch_total_trainable_params)
         
         new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.policy(
@@ -116,8 +116,8 @@ class SACTrainer(TorchTrainer):
         )
         policy_loss = (alpha*log_pi - q_new_actions).mean()
 
-        pytorch_total_params = sum(p.numel() for p in self.qf1.parameters())
-        pytorch_total_trainable_params = sum(p.numel() for p in self.qf1.parameters() if p.requires_grad)
+        # pytorch_total_params = sum(p.numel() for p in self.qf1.parameters())
+        # pytorch_total_trainable_params = sum(p.numel() for p in self.qf1.parameters() if p.requires_grad)
         # print("self.qf1: ", next(self.qf1.parameters()).dtype, next(self.qf1.parameters()).is_cuda, pytorch_total_params, pytorch_total_trainable_params)
 
         """
